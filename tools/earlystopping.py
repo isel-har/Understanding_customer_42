@@ -1,5 +1,6 @@
 from copy import deepcopy
 import torch
+from sklearn.metrics import accuracy_score
 
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=0, restore_best_weights=True):
@@ -37,13 +38,15 @@ class EarlyStopping:
     def compute_val_metrics(model, criterion, X_val, y_val):
 
         val_loss = 0.0
-        val_correct = 0    
+        val_accuracy = 0    
 
         with torch.no_grad():
             outputs = model(X_val)
+            print("outputs :", outputs)
             loss = criterion(outputs, y_val)
 
             val_loss = loss.item() / len(y_val)
-            val_correct = (outputs.argmax(dim=1) == y_val).sum().item() / len(y_val)
+            # val_accuracy = accuracy_score(y_true=y_val.numpy(), y_pred=outputs.argmax(dim=1).numpy())
+            val_accuracy = (outputs.argmax(dim=1) == y_val).sum().item() / len(y_val)
 
-        return val_loss, val_correct
+        return val_loss, val_accuracy
