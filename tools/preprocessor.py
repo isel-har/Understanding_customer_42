@@ -1,26 +1,27 @@
+# import os
+# os.environ['GENSIM_DATA_DIR'] = '/home/isel-har/goinfre/gensim'
 import nltk
-
-nltk.download("averaged_perceptron_tagger_eng")
-nltk.download("punkt_tab")
-nltk.download("wordnet")
-nltk.download("stopwords")
-
-
 from transformers import AutoTokenizer
 import contractions
 import string
-import gensim.downloader as api
-from nltk.stem     import WordNetLemmatizer
+from nltk.stem     import WordNetLemmatizer, PorterStemmer
 from nltk.tokenize import word_tokenize
 from nltk.corpus   import stopwords
 from nltk.corpus   import wordnet
-
 import numpy as np
+import gensim.downloader as api
+# import re
+
+
+# nltk.download("averaged_perceptron_tagger_eng")
+# nltk.download("punkt_tab")
+# nltk.download("wordnet")
+# nltk.download("stopwords")
 
 
 class NLProcessor:
-
-    punct_translator = str.maketrans("", "", string.punctuation)
+    punct = string.punctuation.replace('-', '')
+    punct_translator = str.maketrans('', '', punct)
     digit_translator = str.maketrans("", "", string.digits)
 
     def __init__(
@@ -31,9 +32,8 @@ class NLProcessor:
         use_clean=True,
         remove_punc=True,
         sub_word_tokenizer=False,
-        embedder=api.load('word2vec-google-news-300')
+        embedder=api.load("fasttext-wiki-news-subwords-300")
     ):
-
         self.use_clean     = use_clean
         self.use_stopwords = use_stopwords
         self.use_normalize = normalize
@@ -44,10 +44,8 @@ class NLProcessor:
 
         self.stop_words = set(stopwords.words("english")) if use_stopwords else None
         self.normalizer = WordNetLemmatizer() if normalize else None
-
         self.sub_word_tokenizer = sub_word_tokenizer
         self.embedder = embedder
-
 
 
     @staticmethod
@@ -106,6 +104,18 @@ class NLProcessor:
 
         return filtered_tokens
 
+    # @staticmethod
+    # def remove_ed_(word):
+    #     return re.sub(r'ed$', '', word)
+
+    # def remove_ed_suf(self, tokens_list: list):
+    #     stems_tokens = []
+
+    #     for tokens in tokens_list:
+    #         stems_tokens.append([self.remove_ed_(token) for token in tokens])
+
+    #     return stems_tokens
+
 
     def normalize(self, tokens_list):
 
@@ -150,6 +160,8 @@ class NLProcessor:
                 if token in self.embedder:
                     embedding_vec = self.embedder[token]
                     embeddings.append(embedding_vec)
+                else:
+                    print(f"token not found : {token}")
 
             if len(embeddings) > self.padding_len:
                 self.padding_len = len(embeddings)
@@ -174,6 +186,9 @@ class NLProcessor:
             tokens  = self.filter_stopwords(tokens)
         if self.use_normalize:
             tokens  = self.normalize(tokens)
+
+        # if self.remove_ed:
+        #     tokens = self.remove_ed_suf(tokens)
 
         if self.sub_word_tokenizer:
             return tokens

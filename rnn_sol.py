@@ -11,7 +11,6 @@ import torch
 # from sklearn.model_selection import train_test_split
 # from sklearn.preprocessing import LabelEncoder
 from tools.cnn import TextCNN
-from tools.preprocessor import NLProcessor
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -30,7 +29,6 @@ dropout_rate = 0.2
 patience = 5
 lr = 0.001
 weight_decay = 1e-4
-last_val_acc = 0.0
 scheduler_factor = 0.5
 num_epochs = 100
 kernel_sizes = [3, 5, 7]
@@ -75,62 +73,60 @@ for epoch in range(num_epochs):
     scheduler.step(val_loss)
     print(f"val loss : {val_loss:.4f} | val acc : {val_acc:.3f}")
 
-    if earlystopping(val_loss, model):
-        last_val_acc = val_acc
-        print(f"Early stopping triggered. Best Val Acc: {last_val_acc:.3f}")
+    if earlystopping(val_acc, model):
         break
 
 print("_" * 60)
 
 
-df_test = pd.read_csv("data/data_test.csv")
-processor = NLProcessor(use_stopwords=True)
-X_test = torch.from_numpy(processor.transform(df_test['text']).astype(np.float32))
-X_test = X_test.permute(0, 2, 1)
+# df_test = pd.read_csv("data/data_test.csv")
+# processor = NLProcessor(use_stopwords=True)
+# X_test = torch.from_numpy(processor.transform(df_test['text']).astype(np.float32))
+# X_test = X_test.permute(0, 2, 1)
 
-intents = []
-model.eval()
+# intents = []
+# model.eval()
 
-with torch.no_grad():
-    outputs = model(X_test)
-    probs = torch.softmax(outputs, dim=1)
-    confidences, indices = torch.max(probs, dim=1)
+# with torch.no_grad():
+#     outputs = model(X_test)
+#     probs = torch.softmax(outputs, dim=1)
+#     confidences, indices = torch.max(probs, dim=1)
 
-    intents = [
-        "Fallback Intent" if conf <= 0.35  else classes_[idx]
-        for conf, idx in zip(confidences.tolist(), indices.tolist())
-    ]
+#     intents = [
+#         "Fallback Intent" if conf <= 0.35  else classes_[idx]
+#         for conf, idx in zip(confidences.tolist(), indices.tolist())
+#     ]
 
-intent_df = pd.DataFrame({'text': df_test['text'], 'intent': intents})
-intent_df.to_csv("intents.csv")
+# intent_df = pd.DataFrame({'text': df_test['text'], 'intent': intents})
+# intent_df.to_csv("intents.csv")
 
-class_to_idx = {cls_name: idx for idx, cls_name in enumerate(classes_)}
-
-
-y_test = df_test['intent'].map(class_to_idx).fillna(-1).astype(int).values
-y_pred = intent_df['intent'].map(class_to_idx).fillna(-1).astype(int).values
-
-print("CNN accuracy score in test set:", accuracy_score(y_true=y_test, y_pred=y_pred))
+# class_to_idx = {cls_name: idx for idx, cls_name in enumerate(classes_)}
 
 
-# torch.save(model, "models/cnn.pkl")
-# print("Text CNN model saved as models/cnn.pkl")
+# y_test = df_test['intent'].map(class_to_idx).fillna(-1).astype(int).values
+# y_pred = intent_df['intent'].map(class_to_idx).fillna(-1).astype(int).values
 
-# with open("diaries.txt", 'a') as f:
+# print("CNN accuracy score in test set:", accuracy_score(y_true=y_test, y_pred=y_pred))
 
-#     f.write(f"""
-#     "Model Architecture:"
-#         {model}
-#     {("=" * 60)}
-#     early stopping patience : {patience}
-#     learning rate : {lr}
-#     epochs : {num_epochs}
-#     regularization L2 : {weight_decay}
-#     lr scheduler used
-#     dropout rate : {dropout_rate}
-#     batch size : {batch_size}
-#     validation accuracy reached : {last_val_acc:.2f}
-#     scheduler factor : {scheduler_factor}
-#     """
-#     )
-#     f.write("_" * 100)
+
+torch.save(model, "models/cnn.pkl")
+print("Text CNN model saved as models/cnn.pkl")
+
+with open("diaries.txt", 'a') as f:
+
+    f.write(f"""
+    "Model Architecture:"
+        {model}
+    {("=" * 60)}
+    early stopping patience : {patience}
+    learning rate : {lr}
+    epochs : {num_epochs}
+    regularization L2 : {weight_decay}
+    lr scheduler used
+    dropout rate : {dropout_rate}
+    batch size : {HP_BATCH_SIZE}
+    best validation accuracy reached : {earlystopping.best_accuracy:.2f}
+    scheduler factor : {scheduler_factor}
+    """
+    )
+    f.write("_" * 100)
